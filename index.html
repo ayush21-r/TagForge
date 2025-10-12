@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TagForge - Advanced Photo Geotagging Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Inter:wght@300;400;500;600&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg class="sun-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="moon-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+    </button>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <path d="M16 4L4 10V22L16 28L28 22V10L16 4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                <circle cx="16" cy="16" r="4" fill="currentColor"/>
+            </svg>
+            <h1>TagForge</h1>
+        </div>
+        <p class="tagline">Next-Generation Photo Geotagging Platform</p>
+    </header>
+
+    <!-- Main Container -->
+    <main class="container">
+        <!-- Left Panel: Upload & Metadata -->
+        <section class="panel left-panel">
+            <div class="panel-header">
+                <h2>Upload & Edit</h2>
+            </div>
+
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" accept="image/*" hidden>
+                    <div class="upload-content">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p class="upload-text">Drop your photo here</p>
+                        <p class="upload-subtext">or click to browse</p>
+                        <button class="btn-upload" id="uploadBtn">Select Photo</button>
+                    </div>
+                </div>
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <span class="file-name" id="fileName"></span>
+                    <button class="btn-clear" id="clearBtn">×</button>
+                </div>
+            </div>
+
+            <!-- Metadata Form -->
+            <div class="metadata-form" id="metadataForm">
+                <div class="form-group">
+                    <label for="latitude">Latitude</label>
+                    <input type="text" id="latitude" placeholder="e.g., 19.0760" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="longitude">Longitude</label>
+                    <input type="text" id="longitude" placeholder="e.g., 72.8777" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="address">Address / Place Name</label>
+                    <input type="text" id="address" placeholder="e.g., Nagpur, Maharashtra, India" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="datetime">Date & Time</label>
+                    <input type="datetime-local" id="datetime" class="input-field">
+                </div>
+                <div class="form-group">
+                    <label for="caption">Custom Caption</label>
+                    <textarea id="caption" placeholder="Add a custom caption..." class="input-field" rows="3"></textarea>
+                </div>
+                <button class="btn-primary" id="updateMapBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    Update Map Location
+                </button>
+            </div>
+        </section>
+
+        <!-- Center Panel: Interactive Map (Large) -->
+        <section class="panel center-panel">
+            <div class="panel-header">
+                <h2>Interactive Map</h2>
+                <div class="map-controls">
+                    <button class="btn-icon" id="locateBtn" title="Get current location">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Location Search -->
+            <div class="location-search">
+                <div class="search-input-wrapper">
+                    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input 
+                        type="text" 
+                        id="locationSearch" 
+                        class="search-input" 
+                        placeholder="Search location (e.g., Mumbai, India)"
+                    />
+                    <button class="btn-clear-search" id="clearSearch" style="display: none;">×</button>
+                </div>
+                <div class="search-results" id="searchResults" style="display: none;"></div>
+            </div>
+            
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="map-info-overlay">
+                    <p>📍 Click anywhere on the map to set location</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Photo Preview & Overlay Editor -->
+        <section class="panel right-panel">
+            <div class="panel-header">
+                <h2>Photo Preview</h2>
+                <div class="preview-controls">
+                    <button class="btn-icon" id="toggleOverlayBtn" title="Toggle overlay visibility">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" id="fitImageBtn" title="Fit to container">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Photo Preview -->
+            <div class="photo-preview-container-compact">
+                <div class="photo-preview-area" id="photoPreviewArea">
+                    <div class="preview-placeholder">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <p>Upload a photo</p>
+                    </div>
+                    <div class="photo-with-overlay" id="photoWithOverlay" style="display: none;">
+                        <img id="previewImage" alt="Preview" />
+                        <div class="photo-overlay-bar" id="photoOverlayBar">
+                            <div class="overlay-content" id="overlayContent">
+                                <img id="mapThumbnail" class="map-thumbnail" src="" alt="Map" style="display: none;" />
+                                <span id="overlayDisplayText">Nagpur, Maharashtra, India • Lat 21.16064° Long 79.052127° • 12/10/2025 11:47 AM GMT +05:30</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Overlay Text Editor -->
+            <div class="overlay-editor-section">
+                <div class="form-group">
+                    <label for="overlayTextEditor">Overlay Text (Editable)</label>
+                    <textarea 
+                        id="overlayTextEditor" 
+                        class="input-field overlay-text-input" 
+                        rows="3" 
+                        placeholder="Nagpur, Maharashtra, India • Lat 21.16064° Long 79.052127° • 12/10/2025 11:47 AM GMT +05:30"
+                    ></textarea>
+                </div>
+                
+                <div class="overlay-options">
+                    <div class="form-group">
+                        <label for="overlayFontSize">Font Size</label>
+                        <select id="overlayFontSize" class="input-field">
+                            <option value="small">Small</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="large">Large</option>
+                            <option value="xlarge">Extra Large</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="overlayPosition">Position</label>
+                        <select id="overlayPosition" class="input-field">
+                            <option value="bottom" selected>Bottom</option>
+                            <option value="top">Top</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" id="applyOverlayBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Apply Changes
+                </button>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn-secondary" id="resetBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="1 4 1 10 7 10"></polyline>
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                    </svg>
+                    Reset All
+                </button>
+                <button class="btn-primary btn-download" id="downloadBtn" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download with Overlay
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>© 2025 TagForge - Professional Photo Geotagging for Photographers, Forensic Experts & Developers</p>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/exif-js"></script>
+    <script src="https://unpkg.com/leaflet-image@0.4.0/leaflet-image.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.3/openlocationcode.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
