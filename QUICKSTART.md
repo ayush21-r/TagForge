@@ -9,14 +9,14 @@ Simply double-click `index.html` to open it in your default browser.
 
 **Using Python:**
 ```bash
-cd c:\AI_ML_Projects\GeoVide
+cd c:\Project\TagForge
 python -m http.server 8000
 ```
 Then open: `http://localhost:8000`
 
 **Using Node.js:**
 ```bash
-cd c:\AI_ML_Projects\GeoVide
+cd c:\Project\TagForge
 npx serve
 ```
 
@@ -42,7 +42,7 @@ npx serve
 
 ### Step 4: Download
 - Preview your photo with the overlay
-- Click "Download Photo" to save
+- Click "Download with Overlay" to save
 
 ## 🎨 Try These Features
 
@@ -56,7 +56,7 @@ npx serve
 - Photos with EXIF data auto-populate location
 - Address is fetched automatically when you click the map
 - Use "Update Map Location" after manually entering coordinates
-- The overlay format is: "Location • Date Time"
+- The overlay format is: "Location • Lat XX.XX° Long XX.XX° • Date Time"
 - Downloaded photos are high-quality JPEGs
 
 ## ⚡ Keyboard Shortcuts

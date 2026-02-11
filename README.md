@@ -73,8 +73,8 @@ A modern, interactive, and responsive web application for extracting, editing, a
 
 1. **Clone or download** this repository:
 ```bash
-git clone https://github.com/yourusername/geovide.git
-cd geovide
+git clone https://github.com/yourusername/tagforge.git
+cd tagforge
 ```
 
 2. **Open the application**:
@@ -142,7 +142,6 @@ cd geovide
 - **[Leaflet.js](https://leafletjs.com/)** - Interactive maps
 - **[EXIF.js](https://github.com/exif-js/exif-js)** - EXIF data extraction
 - **[Nominatim API](https://nominatim.org/)** - Reverse geocoding
-- **[CARTO](https://carto.com/)** - Dark map tiles
 - **[Google Fonts](https://fonts.google.com/)** - Orbitron & Inter fonts
 
 ## 🎨 Design System
@@ -175,7 +174,7 @@ cd geovide
 ## 📁 Project Structure
 
 ```
-geovide/
+tagforge/
 ├── index.html          # Main HTML structure
 ├── styles.css          # Complete styling with themes
 ├── script.js           # Application logic
@@ -193,14 +192,14 @@ const state = {
     // ... other state
 };
 
-// Map tile layer
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    // Change to light theme or other providers
+// Map tile layer (current default)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Swap to another provider if desired
 });
 ```
 
 ### Overlay Styling
-Customize overlay text in `downloadImage()` function:
+Customize overlay text in `downloadImageWithOverlay()` function:
 ```javascript
 ctx.font = 'bold 24px Orbitron, sans-serif'; // Change font
 ctx.fillStyle = 'white'; // Change color
@@ -306,6 +305,6 @@ SOFTWARE.
 
 **Made with ❤️ for photographers, developers, and geo-enthusiasts**
 
-[⭐ Star this repo](https://github.com/yourusername/geovide) | [🐛 Report Bug](https://github.com/yourusername/geovide/issues) | [✨ Request Feature](https://github.com/yourusername/geovide/issues)
+[⭐ Star this repo](https://github.com/yourusername/tagforge) | [🐛 Report Bug](https://github.com/yourusername/tagforge/issues) | [✨ Request Feature](https://github.com/yourusername/tagforge/issues)
 
 </div>
