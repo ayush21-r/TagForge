@@ -285,12 +285,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## 👨‍💻 Author
-
-**TagForge Team**
-- Website: [tagforge.com](#)
-- Email: contact@tagforge.com
-
 ## 🙏 Acknowledgments
 
 - [Leaflet.js](https://leafletjs.com/) for the amazing mapping library
