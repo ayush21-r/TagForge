@@ -42,6 +42,9 @@ function initializeTheme() {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     
     document.documentElement.setAttribute('data-theme', savedTheme);
+    if (!themeToggle) {
+        return;
+    }
     
     themeToggle.addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -58,6 +61,17 @@ function initializeTheme() {
 let map;
 
 function initializeMap() {
+    if (typeof L === 'undefined') {
+        console.error('Leaflet failed to load.');
+        return;
+    }
+
+    const mapElement = document.getElementById('map');
+    if (!mapElement) {
+        console.error('Map container element not found.');
+        return;
+    }
+
     map = L.map('map').setView([state.currentLocation.lat, state.currentLocation.lng], 5);
     
     // Use CARTO basemaps to avoid direct tile-server referer restrictions.
@@ -113,6 +127,9 @@ function updateMetadataFields(lat, lng) {
 async function reverseGeocode(lat, lng) {
     try {
         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        if (!response.ok) {
+            throw new Error(`Reverse geocoding failed with status ${response.status}`);
+        }
         const data = await response.json();
         
         if (data.display_name) {
@@ -528,7 +545,7 @@ function updateMapThumbnail(lat, lng) {
         return;
     }
     
-    if (!lat || !lng) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
         mapThumbnail.style.display = 'none';
         state.mapThumbnailUrl = null;
         return;
@@ -882,6 +899,10 @@ async function downloadImageWithOverlay() {
     
     // Download
     canvas.toBlob((blob) => {
+        if (!blob) {
+            alert('Unable to generate the image file. Please try again.');
+            return;
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1106,6 +1127,9 @@ async function searchLocation(query) {
     
     try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+        if (!response.ok) {
+            throw new Error(`Search failed with status ${response.status}`);
+        }
         const results = await response.json();
         
         if (results.length === 0) {
