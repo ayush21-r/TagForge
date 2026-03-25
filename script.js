@@ -60,9 +60,10 @@ let map;
 function initializeMap() {
     map = L.map('map').setView([state.currentLocation.lat, state.currentLocation.lng], 5);
     
-    // Add tile layer with LIGHT theme (standard OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    // Use CARTO basemaps to avoid direct tile-server referer restrictions.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         maxZoom: 19
     }).addTo(map);
     
@@ -533,10 +534,8 @@ function updateMapThumbnail(lat, lng) {
         return;
     }
     
-    // SIMPLEST APPROACH: Use Mapbox Static Images API (works without API key for basic use)
-    // Or use OpenStreetMap tile directly
+    // Fetch a single static tile for the thumbnail using CARTO basemaps.
     const zoom = 13;
-    const tileSize = 256;
     
     // Convert lat/lng to tile coordinates
     const latRad = lat * Math.PI / 180;
@@ -544,8 +543,9 @@ function updateMapThumbnail(lat, lng) {
     const xtile = Math.floor((parseFloat(lng) + 180) / 360 * n);
     const ytile = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
     
-    // Use OpenStreetMap tile server
-    const tileUrl = `https://tile.openstreetmap.org/${zoom}/${xtile}/${ytile}.png`;
+    const subdomains = ['a', 'b', 'c', 'd'];
+    const subdomain = subdomains[Math.abs((xtile + ytile) % subdomains.length)];
+    const tileUrl = `https://${subdomain}.basemaps.cartocdn.com/light_all/${zoom}/${xtile}/${ytile}.png`;
     
     console.log('Using tile URL:', tileUrl);
     
