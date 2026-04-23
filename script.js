@@ -314,51 +314,6 @@ function initializeEventListeners() {
     document.getElementById('locateBtn').addEventListener('click', getCurrentLocation);
     document.getElementById('resetBtn').addEventListener('click', resetAll);
     document.getElementById('downloadBtn').addEventListener('click', downloadImageWithOverlay);
-
-    // Footer: copy email to clipboard on click
-    document.querySelectorAll('.about-footer-link[data-copy-value]').forEach((link) => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault();
-            const value = link.getAttribute('data-copy-value');
-            if (!value) {
-                return;
-            }
-
-            const label = link.querySelector('span');
-            const originalText = label ? label.textContent : '';
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(value).catch(() => {
-                    fallbackCopyText(value);
-                });
-            } else {
-                fallbackCopyText(value);
-            }
-
-            if (label && originalText) {
-                label.textContent = 'Copied!';
-                setTimeout(() => {
-                    label.textContent = originalText;
-                }, 1200);
-            }
-        });
-    });
-}
-
-function fallbackCopyText(text) {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'absolute';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-    try {
-        document.execCommand('copy');
-    } catch (error) {
-        console.error('Copy failed:', error);
-    }
-    document.body.removeChild(textarea);
 }
 
 // ========================================

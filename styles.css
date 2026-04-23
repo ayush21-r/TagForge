@@ -1023,6 +1023,71 @@ textarea.input-field {
     margin-top: 6px;
 }
 
+.about-footer-features {
+    margin: 15px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.about-footer-note {
+    margin-top: 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.about-title {
+    text-align: center;
+    color: var(--accent-cyan);
+    margin-bottom: 15px;
+}
+
+.about-content {
+    max-width: 700px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.about-intro {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.about-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.feature-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.feature-card span {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.about-note {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 10px;
+}
+
 /* Overlay visibility toggle */
 .photo-overlay-bar.hidden {
     opacity: 0;
