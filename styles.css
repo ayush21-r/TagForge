@@ -106,6 +106,7 @@ body::before {
     border-radius: 50%;
     background: var(--bg-glass);
     border: 1px solid var(--border-color);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     cursor: pointer;
     display: flex;
@@ -201,6 +202,7 @@ body::before {
     border: 1px solid var(--border-color);
     border-radius: 20px;
     padding: 25px;
+    -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     box-shadow: var(--shadow-md);
     transition: all 0.3s ease;
@@ -515,7 +517,7 @@ textarea.input-field {
     justify-content: center;
 }
 
-#previewImage {
+#previewCanvas {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -530,6 +532,7 @@ textarea.input-field {
     left: 0;
     right: 0;
     background: rgba(0, 0, 0, 0.75);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     padding: 20px 30px;
     border-bottom-left-radius: 12px;
@@ -757,6 +760,7 @@ textarea.input-field {
     right: 0;
     margin-top: 8px;
     background: var(--bg-glass);
+    -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -835,6 +839,7 @@ textarea.input-field {
     left: 50%;
     transform: translateX(-50%);
     background: var(--bg-glass);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     padding: 12px 24px;
     border-radius: 25px;
@@ -856,6 +861,7 @@ textarea.input-field {
     left: 50%;
     transform: translateX(-50%);
     background: var(--bg-glass);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     padding: 10px 20px;
     border-radius: 20px;
@@ -905,13 +911,6 @@ textarea.input-field {
 
 .preview-placeholder p {
     font-size: 0.95rem;
-}
-
-#previewCanvas {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    border-radius: 15px;
 }
 
 .preview-overlay {
@@ -1264,6 +1263,7 @@ textarea.input-field {
 
 .leaflet-popup-content-wrapper {
     background: var(--bg-glass);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
@@ -1284,4 +1284,110 @@ textarea.input-field {
     animation: shimmer 2s infinite;
     background: linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-tertiary) 50%, var(--bg-secondary) 100%);
     background-size: 1000px 100%;
+}
+
+.info-section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+    padding: 0 20px;
+}
+
+.info-container {
+    width: 100%;
+    max-width: 1800px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 25px 30px;
+    backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-md);
+}
+
+.info-container h2 {
+    font-family: 'Orbitron', monospace;
+    color: var(--accent-cyan);
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.info-box {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+}
+
+.info-box h3 {
+    color: var(--accent-cyan);
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+}
+
+.info-box p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.info-disclaimer {
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+    text-align: center;
+}
+
+.info-disclaimer p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.map-hint {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-glass);
+    color: var(--text-primary);
+    padding: 10px 18px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(10px);
+    font-size: 0.85rem;
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.map-hint.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-5px);
+}
+
+.hidden {
+    display: none;
+}
+
+@media (max-width: 1024px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .info-section {
+        padding: 0 15px;
+    }
+
+    .info-container {
+        padding: 20px;
+    }
 }

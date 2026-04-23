@@ -9,6 +9,7 @@ const state = {
     imageFile: null,
     currentLocation: { lat: 20.5937, lng: 78.9629 }, // Default: India center
     marker: null,
+    mapMode: 'normal',
     overlayVisible: true,
     mapThumbnailUrl: null,
     overlaySettings: {
@@ -24,6 +25,10 @@ const state = {
         caption: ''
     }
 };
+
+let previewRenderToken = 0;
+let lastThumbnailKey = '';
+let mapHintTimeoutId = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,6 +64,8 @@ function initializeTheme() {
 // Map Initialization
 // ========================================
 let map;
+let normalLayer;
+let satelliteLayer;
 
 function initializeMap() {
     if (typeof L === 'undefined') {
@@ -74,15 +81,124 @@ function initializeMap() {
 
     map = L.map('map').setView([state.currentLocation.lat, state.currentLocation.lng], 5);
     
-    // Use CARTO basemaps to avoid direct tile-server referer restrictions.
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    // Default basemap: CARTO light tiles.
+    normalLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         subdomains: 'abcd',
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         maxZoom: 19
-    }).addTo(map);
+    });
+
+    // Optional satellite basemap.
+    satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 19
+    });
+
+    // Keep current behavior unchanged by loading the normal layer by default.
+    normalLayer.addTo(map);
+    updateMapToggleUI();
+
+    // If satellite tiles fail while active, silently fall back to the normal map.
+    satelliteLayer.on('tileerror', () => {
+        if (state.mapMode === 'satellite') {
+            console.warn('Satellite tiles failed to load. Falling back to normal map.');
+            setMapMode('normal');
+        }
+    });
     
     // Add click event to map
     map.on('click', onMapClick);
+}
+
+function setMapMode(mode) {
+    if (!map || !normalLayer || !satelliteLayer) {
+        console.error('Map layers are not ready yet.');
+        return;
+    }
+
+    if (mode === 'satellite') {
+        if (map.hasLayer(normalLayer)) {
+            map.removeLayer(normalLayer);
+        }
+        if (!map.hasLayer(satelliteLayer)) {
+            satelliteLayer.addTo(map);
+        }
+        state.mapMode = 'satellite';
+        updateMapToggleUI();
+        refreshMapThumbnailForCurrentMode();
+        showMapHint();
+        return;
+    }
+
+    if (map.hasLayer(satelliteLayer)) {
+        map.removeLayer(satelliteLayer);
+    }
+    if (!map.hasLayer(normalLayer)) {
+        normalLayer.addTo(map);
+    }
+    state.mapMode = 'normal';
+    updateMapToggleUI();
+    refreshMapThumbnailForCurrentMode();
+}
+
+function toggleMapMode() {
+    const nextMode = state.mapMode === 'normal' ? 'satellite' : 'normal';
+    setMapMode(nextMode);
+}
+
+function showMapHint() {
+    const hint = document.getElementById('mapHint');
+    if (!hint) {
+        return;
+    }
+
+    if (mapHintTimeoutId) {
+        clearTimeout(mapHintTimeoutId);
+        mapHintTimeoutId = null;
+    }
+
+    hint.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        hint.classList.add('show');
+    });
+
+    mapHintTimeoutId = setTimeout(() => {
+        hint.classList.remove('show');
+        mapHintTimeoutId = setTimeout(() => {
+            hint.classList.add('hidden');
+            mapHintTimeoutId = null;
+        }, 300);
+    }, 3500);
+}
+
+function updateMapToggleUI() {
+    const btn = document.getElementById('mapStyleToggleBtn');
+    if (!btn) {
+        return;
+    }
+
+    if (state.mapMode === 'satellite') {
+        btn.textContent = '🛰️';
+        btn.title = 'Switch to Normal Map';
+        btn.setAttribute('aria-label', 'Switch to Normal Map');
+        return;
+    }
+
+    btn.textContent = '🗺️';
+    btn.title = 'Switch to Satellite';
+    btn.setAttribute('aria-label', 'Switch to Satellite');
+}
+
+function refreshMapThumbnailForCurrentMode() {
+    const lat = parseFloat(state.metadata.latitude);
+    const lng = parseFloat(state.metadata.longitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+    }
+
+    lastThumbnailKey = '';
+    updateMapThumbnail(lat, lng);
 }
 
 function onMapClick(e) {
@@ -193,6 +309,7 @@ function initializeEventListeners() {
     document.getElementById('fitImageBtn').addEventListener('click', fitImageToContainer);
     
     // Buttons
+    document.getElementById('mapStyleToggleBtn').addEventListener('click', toggleMapMode);
     document.getElementById('updateMapBtn').addEventListener('click', updateMapFromInputs);
     document.getElementById('locateBtn').addEventListener('click', getCurrentLocation);
     document.getElementById('resetBtn').addEventListener('click', resetAll);
@@ -308,6 +425,14 @@ function clearUpload() {
     document.getElementById('photoWithOverlay').style.display = 'none';
     document.querySelector('.preview-placeholder').style.display = 'flex';
     document.getElementById('downloadBtn').disabled = true;
+
+    const previewCanvas = document.getElementById('previewCanvas');
+    if (previewCanvas) {
+        const ctx = previewCanvas.getContext('2d');
+        ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        previewCanvas.width = 0;
+        previewCanvas.height = 0;
+    }
 }
 
 // ========================================
@@ -425,19 +550,16 @@ function setDefaultDateTime() {
 // Photo Preview Display
 // ========================================
 function displayPhotoPreview() {
-    const previewImage = document.getElementById('previewImage');
     const photoWithOverlay = document.getElementById('photoWithOverlay');
     const placeholder = document.querySelector('.preview-placeholder');
-    
-    // Set image source
-    previewImage.src = state.uploadedImage.src;
-    
-    // Show photo with overlay
+
+    // Show the canvas preview. The canvas uses the exact same renderer as
+    // download, so preview and exported image stay visually identical.
     placeholder.style.display = 'none';
     photoWithOverlay.style.display = 'flex';
     
-    // Update overlay text
     updateOverlayText();
+    renderCanvasPreview();
 }
 
 function updateOverlayText() {
@@ -445,6 +567,21 @@ function updateOverlayText() {
     const lat = state.metadata.latitude || '';
     const lng = state.metadata.longitude || '';
     const datetime = state.metadata.datetime || '';
+
+    // Keep raw metadata as strings for display, but always use parsed numbers
+    // for map rendering and coordinate math. This prevents valid string inputs
+    // from being rejected by Number.isFinite() downstream.
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+    const hasValidCoordinates = Number.isFinite(parsedLat) && Number.isFinite(parsedLng);
+
+    console.debug('Overlay coordinates:', {
+        rawLat: lat,
+        rawLng: lng,
+        parsedLat,
+        parsedLng,
+        hasValidCoordinates
+    });
     
     // Extract short location name (city, state, country) from full address
     let shortLocation = address;
@@ -461,8 +598,8 @@ function updateOverlayText() {
     
     // Generate Plus Code from coordinates
     let plusCode = '';
-    if (lat && lng) {
-        plusCode = generatePlusCode(parseFloat(lat), parseFloat(lng));
+    if (hasValidCoordinates) {
+        plusCode = generatePlusCode(parsedLat, parsedLng);
     }
     
     // Build multi-line overlay text in GPS Camera style
@@ -481,8 +618,8 @@ function updateOverlayText() {
     }
     
     // Line 3: Coordinates
-    if (lat && lng) {
-        line3 = `Lat ${parseFloat(lat).toFixed(6)}° Long ${parseFloat(lng).toFixed(6)}°`;
+    if (hasValidCoordinates) {
+        line3 = `Lat ${parsedLat.toFixed(6)}° Long ${parsedLng.toFixed(6)}°`;
     }
     
     // Line 4: Date and time
@@ -496,21 +633,28 @@ function updateOverlayText() {
     if (line3) overlayText += `\n${line3}`;
     if (line4) overlayText += `\n${line4}`;
     
-    // Update both display and editor
-    const displayText = document.getElementById('overlayDisplayText');
+    // Update editor state. The visible preview is canvas-rendered, not HTML.
     const editorText = document.getElementById('overlayTextEditor');
     
     if (overlayText) {
-        displayText.textContent = overlayText;
         editorText.value = overlayText;
         state.overlaySettings.text = overlayText;
     } else {
-        displayText.textContent = 'Nagpur, Maharashtra, India 🇮🇳\n5362+6vc, Seminary Hills, Nagpur, Maharashtra 440001, India\nLat 21.16064° Long 79.052127°\n12/10/2025 11:47 AM GMT +05:30';
         editorText.value = '';
+        state.overlaySettings.text = '';
     }
     
-    // Update map thumbnail
-    updateMapThumbnail(lat, lng);
+    // Update the map thumbnail only with validated numeric coordinates.
+    if (hasValidCoordinates) {
+        updateMapThumbnail(parsedLat, parsedLng);
+    } else {
+        state.mapThumbnailUrl = null;
+        renderCanvasPreview();
+        console.warn('Skipping map thumbnail update because coordinates are invalid.', {
+            lat,
+            lng
+        });
+    }
 }
 
 // Generate Plus Code (Open Location Code) from coordinates
@@ -538,31 +682,69 @@ function generatePlusCode(lat, lng) {
 // Map Thumbnail Capture using Leaflet
 // ========================================
 function updateMapThumbnail(lat, lng) {
-    const mapThumbnail = document.getElementById('mapThumbnail');
+    const parsedLat = parseFloat(lat);
+    const parsedLng = parseFloat(lng);
+
+    console.debug('Updating map thumbnail:', {
+        lat,
+        lng,
+        parsedLat,
+        parsedLng
+    });
     
-    if (!mapThumbnail) {
-        console.error('Map thumbnail element not found!');
-        return;
-    }
-    
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        mapThumbnail.style.display = 'none';
+    if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
         state.mapThumbnailUrl = null;
+        lastThumbnailKey = '';
+        renderCanvasPreview();
+        console.warn('Map thumbnail not rendered because coordinates are invalid.', {
+            lat,
+            lng
+        });
         return;
     }
+
+    const thumbnailKey = `${parsedLat.toFixed(6)},${parsedLng.toFixed(6)}`;
+    if (state.mapThumbnailUrl && thumbnailKey === lastThumbnailKey) {
+        renderCanvasPreview();
+        return;
+    }
+    lastThumbnailKey = thumbnailKey;
+
+    // Store and render a generated placeholder immediately. If the network tile
+    // fails or is slow, preview/download still get a visible map thumbnail.
+    createPlaceholderThumbnail(parsedLat, parsedLng);
     
     // Fetch a single static tile for the thumbnail using CARTO basemaps.
     const zoom = 13;
+    const maxMercatorLatitude = 85.05112878;
+    const tileLat = Math.max(Math.min(parsedLat, maxMercatorLatitude), -maxMercatorLatitude);
     
     // Convert lat/lng to tile coordinates
-    const latRad = lat * Math.PI / 180;
+    const latRad = tileLat * Math.PI / 180;
     const n = Math.pow(2, zoom);
-    const xtile = Math.floor((parseFloat(lng) + 180) / 360 * n);
+    const xtile = Math.floor((parsedLng + 180) / 360 * n);
     const ytile = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+
+    if (!Number.isFinite(xtile) || !Number.isFinite(ytile)) {
+        console.error('Unable to calculate map tile coordinates. Keeping placeholder thumbnail.', {
+            parsedLat,
+            parsedLng,
+            xtile,
+            ytile
+        });
+        renderCanvasPreview();
+        return;
+    }
     
-    const subdomains = ['a', 'b', 'c', 'd'];
-    const subdomain = subdomains[Math.abs((xtile + ytile) % subdomains.length)];
-    const tileUrl = `https://${subdomain}.basemaps.cartocdn.com/light_all/${zoom}/${xtile}/${ytile}.png`;
+    let tileUrl;
+
+    if (state.mapMode === 'satellite') {
+        tileUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ytile}/${xtile}`;
+    } else {
+        const subdomains = ['a', 'b', 'c', 'd'];
+        const subdomain = subdomains[Math.abs((xtile + ytile) % subdomains.length)];
+        tileUrl = `https://${subdomain}.basemaps.cartocdn.com/light_all/${zoom}/${xtile}/${ytile}.png`;
+    }
     
     console.log('Using tile URL:', tileUrl);
     
@@ -572,38 +754,45 @@ function updateMapThumbnail(lat, lng) {
     
     tileImg.onload = function() {
         console.log('✅ Map tile loaded successfully!');
-        
-        // Create canvas to draw tile + pin
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 200;
-        const ctx = canvas.getContext('2d');
-        
-        // Draw the tile
-        ctx.drawImage(tileImg, 0, 0, 200, 200);
-        
-        // Draw red pin in center
-        drawLocationPin(ctx, 100, 100);
-        
-        // Convert to data URL
-        const dataUrl = canvas.toDataURL('image/png');
-        
-        // Set thumbnail
-        mapThumbnail.src = dataUrl;
-        mapThumbnail.style.display = 'block';
-        state.mapThumbnailUrl = dataUrl;
+
+        try {
+            // Create canvas to draw tile + pin
+            const canvas = document.createElement('canvas');
+            canvas.width = 200;
+            canvas.height = 200;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw the tile
+            ctx.drawImage(tileImg, 0, 0, 200, 200);
+            
+            // Draw red pin in center
+            drawLocationPin(ctx, 100, 100);
+            
+            // Convert to data URL
+            const dataUrl = canvas.toDataURL('image/png');
+            
+            state.mapThumbnailUrl = dataUrl;
+            renderCanvasPreview();
+        } catch (error) {
+            console.error('Failed to render map tile thumbnail. Keeping placeholder thumbnail.', error);
+            createPlaceholderThumbnail(parsedLat, parsedLng);
+        }
     };
     
     tileImg.onerror = function() {
-        console.error('❌ Failed to load map tile');
+        console.error('❌ Failed to load map tile. Using placeholder thumbnail.', {
+            tileUrl,
+            lat: parsedLat,
+            lng: parsedLng
+        });
         // Fallback to placeholder
-        createPlaceholderThumbnail(mapThumbnail, lat, lng);
+        createPlaceholderThumbnail(parsedLat, parsedLng);
     };
     
     tileImg.src = tileUrl;
 }
 
-function createPlaceholderThumbnail(mapThumbnail, lat, lng) {
+function createPlaceholderThumbnail(lat, lng) {
     const canvas = document.createElement('canvas');
     canvas.width = 200;
     canvas.height = 200;
@@ -634,9 +823,8 @@ function createPlaceholderThumbnail(mapThumbnail, lat, lng) {
     ctx.fillText(`${parseFloat(lng).toFixed(4)}°`, 100, 180);
     
     const dataUrl = canvas.toDataURL('image/png');
-    mapThumbnail.src = dataUrl;
-    mapThumbnail.style.display = 'block';
     state.mapThumbnailUrl = dataUrl;
+    renderCanvasPreview();
     
     console.log('✅ Using placeholder thumbnail');
 }
@@ -816,21 +1004,24 @@ function formatGPSDateTime(datetimeLocal) {
 function handleOverlayTextEdit(e) {
     const text = e.target.value;
     state.overlaySettings.text = text;
-    document.getElementById('overlayDisplayText').textContent = text || 'Nagpur, Maharashtra, India • Lat 21.16064° Long 79.052127° • 12/10/2025 11:47 AM GMT +05:30';
+    renderCanvasPreview();
 }
 
 function handleOverlaySizeChange(e) {
     state.overlaySettings.fontSize = e.target.value;
     applyOverlaySettings();
+    renderCanvasPreview();
 }
 
 function handleOverlayPositionChange(e) {
     state.overlaySettings.position = e.target.value;
     applyOverlaySettings();
+    renderCanvasPreview();
 }
 
 function applyOverlayChanges() {
     applyOverlaySettings();
+    renderCanvasPreview();
     // Show feedback
     const btn = document.getElementById('applyOverlayBtn');
     const originalText = btn.innerHTML;
@@ -841,27 +1032,13 @@ function applyOverlayChanges() {
 }
 
 function applyOverlaySettings() {
-    const overlayBar = document.getElementById('photoOverlayBar');
-    
-    // Apply font size
-    overlayBar.className = 'photo-overlay-bar';
-    overlayBar.classList.add(`size-${state.overlaySettings.fontSize}`);
-    
-    // Apply position
-    if (state.overlaySettings.position === 'top') {
-        overlayBar.classList.add('position-top');
-    }
+    // Preview is rendered on canvas, so settings are applied by
+    // drawOverlayOnCanvas() instead of mutating HTML overlay classes.
 }
 
 function toggleOverlayVisibility() {
     state.overlayVisible = !state.overlayVisible;
-    const overlayBar = document.getElementById('photoOverlayBar');
-    
-    if (state.overlayVisible) {
-        overlayBar.classList.remove('hidden');
-    } else {
-        overlayBar.classList.add('hidden');
-    }
+    renderCanvasPreview();
 }
 
 function fitImageToContainer() {
@@ -876,6 +1053,42 @@ function fitImageToContainer() {
 // ========================================
 // Canvas-Based Download with Overlay
 // ========================================
+async function renderCanvasPreview() {
+    const previewCanvas = document.getElementById('previewCanvas');
+
+    if (!previewCanvas || !state.uploadedImage) {
+        return;
+    }
+
+    const renderToken = ++previewRenderToken;
+
+    // Batch rapid metadata/editor changes into the next frame so typing stays
+    // smooth while still using the same renderer as the final download.
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    if (renderToken !== previewRenderToken) {
+        return;
+    }
+
+    await renderImageWithOverlay(previewCanvas);
+}
+
+async function renderImageWithOverlay(canvas) {
+    const ctx = canvas.getContext('2d');
+    const imageWidth = state.uploadedImage.naturalWidth || state.uploadedImage.width;
+    const imageHeight = state.uploadedImage.naturalHeight || state.uploadedImage.height;
+
+    canvas.width = imageWidth;
+    canvas.height = imageHeight;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(state.uploadedImage, 0, 0, canvas.width, canvas.height);
+
+    if (state.overlayVisible && state.overlaySettings.text) {
+        await drawOverlayOnCanvas(ctx, canvas.width, canvas.height);
+    }
+}
+
 async function downloadImageWithOverlay() {
     if (!state.uploadedImage) {
         alert('Please upload an image first.');
@@ -883,19 +1096,7 @@ async function downloadImageWithOverlay() {
     }
     
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Set canvas to original image dimensions
-    canvas.width = state.uploadedImage.width;
-    canvas.height = state.uploadedImage.height;
-    
-    // Draw original image
-    ctx.drawImage(state.uploadedImage, 0, 0);
-    
-    // Only add overlay if visible
-    if (state.overlayVisible && state.overlaySettings.text) {
-        await drawOverlayOnCanvas(ctx, canvas.width, canvas.height);
-    }
+    await renderImageWithOverlay(canvas);
     
     // Download
     canvas.toBlob((blob) => {
